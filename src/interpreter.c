@@ -101,7 +101,8 @@ result_t *eval_binary(binary_t *binary) {
         match(binary->op, "Lt") || match(binary->op, "Gt") ||
         match(binary->op, "Lte") || match(binary->op, "Gte")) {
         if (!match(left->type, "Int") || !match(right->type, "Int")) {
-            runtime_error("This operation must be applied to integers");
+            runtime_error("%s operation must be applied to integers",
+                          binary->op);
         }
     }
 
@@ -282,13 +283,11 @@ result_t *eval(term_t *root) {
         result_t *result = lookup_result(stack->variables, var->text);
 
         if (result == NULL) {
-            printf("Variable -> %s\n", var->text);
-            runtime_error("Unknown variable");
+            runtime_error("Unknown variable %s", var->text);
         }
 
         return result;
     } else {
-        printf("Kind -> %s\n", root->kind);
-        runtime_error("Unknown term kind");
+        runtime_error("Unknown term kind %s", root->kind);
     }
 }
