@@ -99,3 +99,32 @@ void runtime_error(const char *message, ...);
 
 term_t *parse_expression(json_object *expression);
 result_t *eval(term_t *root);
+
+typedef struct result_map_t {
+    struct result_map_t *next;
+    const char *key;
+    result_t *value;
+} result_map_t;
+
+typedef struct term_map_t {
+    struct term_map_t *next;
+    const char *key;
+    term_t *value;
+} term_map_t;
+
+typedef struct stack_t {
+    struct stack_t *next;
+    result_map_t *variables;
+    term_map_t *functions;
+} stack_t;
+
+result_map_t *make_result_map_t(const char *key, result_t *value);
+void free_result_map_t(result_map_t *result_map);
+term_map_t *make_term_map_t(const char *key, term_t *value);
+void free_term_map_t(term_map_t *term_map);
+stack_t *make_stack_t();
+term_t *lookup_term(term_map_t *map, const char *key);
+result_t *lookup_result(result_map_t *map, const char *key);
+stack_t *stack_add(stack_t *stack, stack_t *value);
+result_map_t *result_map_add(result_map_t *map, result_map_t *value);
+term_map_t *term_map_add(term_map_t *map, term_map_t *value);
