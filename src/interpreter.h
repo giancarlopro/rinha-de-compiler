@@ -64,6 +64,13 @@ typedef struct {
     term_t *rhs;
 } binary_t;
 
+typedef struct {
+    const char *kind;
+    term_t *condition;
+    term_t *then;
+    term_t *otherwise;
+} if_t;
+
 result_t *make_result_t(void *value, const char *type);
 print_t *make_print_t(term_t *value);
 str_t *make_str_t(const char *value);
@@ -74,6 +81,7 @@ runtime_tuple_t *make_runtime_tuple_t(void *first, void *second);
 first_t *make_first_t(term_t *value);
 second_t *make_second_t(term_t *value);
 binary_t *make_binary_t(const char *op, term_t *lhs, term_t *rhs);
+if_t *make_if_t(term_t *condition, term_t *then, term_t *otherwise);
 void free_term_t(term_t *term);
 void free_result_t(result_t *result);
 void free_print_t(print_t *print);
@@ -85,6 +93,7 @@ void free_runtime_tuple_t(runtime_tuple_t *tuple);
 void free_first_t(first_t *first);
 void free_second_t(second_t *second);
 void free_binary_t(binary_t *binary);
+void free_if_t(if_t *value);
 
 void runtime_error(const char *message, ...);
 

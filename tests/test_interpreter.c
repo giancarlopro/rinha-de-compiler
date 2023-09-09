@@ -379,6 +379,24 @@ static char* test_eval_or() {
     return 0;
 }
 
+static char* test_eval_if() {
+    if_t* if_ = make_if_t((term_t*)make_bool_t(true), (term_t*)make_int_t(1),
+                          (term_t*)make_int_t(2));
+
+    result_t* res = eval((term_t*)if_);
+
+    mu_assert("If error, value != 1", (*(int*)res->value) == 1);
+
+    if_ = make_if_t((term_t*)make_bool_t(false), (term_t*)make_int_t(1),
+                    (term_t*)make_int_t(2));
+
+    res = eval((term_t*)if_);
+
+    mu_assert("If error, value != 2", (*(int*)res->value) == 2);
+
+    return 0;
+}
+
 static char* all_tests() {
     mu_run_test(test_parse_str_expression);
     mu_run_test(test_parse_print_expression);
@@ -401,6 +419,7 @@ static char* all_tests() {
     mu_run_test(test_eval_neq);
     mu_run_test(test_eval_and);
     mu_run_test(test_eval_or);
+    mu_run_test(test_eval_if);
     return 0;
 }
 

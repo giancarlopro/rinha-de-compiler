@@ -34,6 +34,11 @@ term_t *parse_expression(json_object *expression) {
             json_object_get_string(json_object_object_get(expression, "op")),
             parse_expression(json_object_object_get(expression, "lhs")),
             parse_expression(json_object_object_get(expression, "rhs")));
+    } else if (match(kind, "If")) {
+        return (term_t *)make_if_t(
+            parse_expression(json_object_object_get(expression, "condition")),
+            parse_expression(json_object_object_get(expression, "then")),
+            parse_expression(json_object_object_get(expression, "otherwise")));
     }
 }
 
@@ -226,5 +231,15 @@ result_t *eval(term_t *root) {
         return make_result_t(runtime_tuple->second, tuple->second->kind);
     } else if (match(root->kind, "Binary")) {
         return eval_binary((binary_t *)root);
+    } else if (match(root->kind, "If")) {
+        if_t *if_term = (if_t *)root;
+
+        result_t *condition = eval(if_term->condition);
+
+        if (*(int *)condition->value) {
+            return eval(if_term->then);
+        } else {
+            return eval(if_term->otherwise);
+        }
     }
 }

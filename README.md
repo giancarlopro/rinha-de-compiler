@@ -1,11 +1,11 @@
 Term
 Um termo pode ser qualquer uma das seguintes estruturas:
 
-- [ ] If
 - [ ] Let
 - [ ] Var
 - [ ] Function
 - [ ] Call
+- [x] If
 - [x] Binary
 - [x] Int
 - [x] Str

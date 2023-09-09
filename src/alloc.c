@@ -28,6 +28,8 @@ void free_term_t(term_t *term) {
         free_second_t((second_t *)term);
     } else if (match(term->kind, "Binary")) {
         free_binary_t((binary_t *)term);
+    } else if (match(term->kind, "If")) {
+        free_if_t((if_t *)term);
     }
 }
 
@@ -156,4 +158,22 @@ void free_binary_t(binary_t *binary) {
     free_term_t(binary->lhs);
     free_term_t(binary->rhs);
     free(binary);
+}
+
+if_t *make_if_t(term_t *condition, term_t *then, term_t *otherwise) {
+    if_t *value = malloc(sizeof(if_t));
+
+    value->kind = "If";
+    value->then = then;
+    value->condition = condition;
+    value->otherwise = otherwise;
+
+    return value;
+}
+
+void free_if_t(if_t *value) {
+    free_term_t(value->condition);
+    free_term_t(value->then);
+    free_term_t(value->otherwise);
+    free(value);
 }
