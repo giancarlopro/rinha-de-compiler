@@ -38,14 +38,14 @@ term_t *parse_expression(json_object *expression) {
 }
 
 result_t *print(term_t *root) {
-    void *value = eval(root);
+    result_t *res = eval(root);
 
     if (match(root->kind, "Str")) {
-        printf("%s", (char *)value);
+        printf("%s", (char *)res->value);
     } else if (match(root->kind, "Int")) {
-        printf("%d", *(int *)value);
+        printf("%d", *(int *)res->value);
     } else if (match(root->kind, "Bool")) {
-        bool value = *(bool *)value;
+        bool value = *(bool *)res->value;
         if (value) {
             printf("true");
         } else {
