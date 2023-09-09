@@ -207,3 +207,14 @@ void free_let_t(let_t *let) {
     free_term_t(let->next);
     free(let);
 }
+
+var_t *make_var_t(const char *text) {
+    var_t *var = malloc(sizeof(var_t));
+
+    var->kind = "Var";
+    var->text = text;
+
+    return var;
+}
+
+void free_var_t(var_t *var) { free(var); }

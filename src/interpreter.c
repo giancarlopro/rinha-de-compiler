@@ -47,6 +47,11 @@ term_t *parse_expression(json_object *expression) {
                 json_object_object_get(expression, "name"))),
             parse_expression(json_object_object_get(expression, "value")),
             parse_expression(json_object_object_get(expression, "next")));
+    } else if (match(kind, "Var")) {
+        return (term_t *)make_var_t(
+            json_object_get_string(json_object_object_get(expression, "text")));
+    } else {
+        runtime_error("Unknown term kind: %s", kind);
     }
 }
 
@@ -256,13 +261,34 @@ result_t *eval(term_t *root) {
     } else if (match(root->kind, "Let")) {
         let_t *let = (let_t *)root;
 
-        stack->functions = term_map_add(
-            stack->functions, make_term_map_t(let->name->text, let->value));
+        if (match(let->value->kind, "Function")) {
+            stack->functions = term_map_add(
+                stack->functions, make_term_map_t(let->name->text, let->value));
+        } else {
+            result_t *result = eval(let->value);
+
+            stack->variables = result_map_replace(
+                stack->variables, make_result_map_t(let->name->text, result));
+        }
 
         if (let->next != NULL) {
             return eval(let->next);
         }
 
         return make_result_t(NULL, "Void");
+    } else if (match(root->kind, "Var")) {
+        var_t *var = (var_t *)root;
+
+        result_t *result = lookup_result(stack->variables, var->text);
+
+        if (result == NULL) {
+            printf("Variable -> %s\n", var->text);
+            runtime_error("Unknown variable");
+        }
+
+        return result;
+    } else {
+        printf("Kind -> %s\n", root->kind);
+        runtime_error("Unknown term kind");
     }
 }

@@ -100,6 +100,32 @@ result_map_t *result_map_add(result_map_t *map, result_map_t *value) {
     return map;
 }
 
+result_map_t *result_map_replace(result_map_t *map, result_map_t *value) {
+    if (map == NULL) {
+        return value;
+    }
+
+    result_map_t *current = map;
+    result_map_t *last = NULL;
+
+    while (current != NULL) {
+        if (match(current->key, value->key)) {
+            free_result_t(current->value);
+            current->value = value->value;
+
+            return map;
+        }
+
+        if (current->next == NULL) last = current;
+
+        current = current->next;
+    }
+
+    last->next = value;
+
+    return map;
+}
+
 term_map_t *term_map_add(term_map_t *map, term_map_t *value) {
     if (map == NULL) {
         return value;
