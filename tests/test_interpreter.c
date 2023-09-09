@@ -397,6 +397,18 @@ static char* test_eval_if() {
     return 0;
 }
 
+static char* test_eval_let() {
+    let_t* let = make_let_t(make_parameter_t("x"), (term_t*)make_int_t(1),
+                            (term_t*)make_int_t(1));
+
+    result_t* res = eval((term_t*)let);
+
+    mu_assert("Let error, type == Void", !match(res->type, "Void"));
+    mu_assert("Let error, value != 1", (*(int*)res->value) == 1);
+
+    return 0;
+}
+
 static char* all_tests() {
     mu_run_test(test_parse_str_expression);
     mu_run_test(test_parse_print_expression);
@@ -420,6 +432,7 @@ static char* all_tests() {
     mu_run_test(test_eval_and);
     mu_run_test(test_eval_or);
     mu_run_test(test_eval_if);
+    mu_run_test(test_eval_let);
     return 0;
 }
 

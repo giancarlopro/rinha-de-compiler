@@ -30,6 +30,8 @@ void free_term_t(term_t *term) {
         free_binary_t((binary_t *)term);
     } else if (match(term->kind, "If")) {
         free_if_t((if_t *)term);
+    } else if (match(term->kind, "Let")) {
+        free_let_t((let_t *)term);
     }
 }
 
@@ -176,4 +178,32 @@ void free_if_t(if_t *value) {
     free_term_t(value->then);
     free_term_t(value->otherwise);
     free(value);
+}
+
+parameter_t *make_parameter_t(const char *text) {
+    parameter_t *parameter = malloc(sizeof(parameter_t));
+
+    parameter->text = text;
+
+    return parameter;
+}
+
+void free_parameter_t(parameter_t *parameter) { free(parameter); }
+
+let_t *make_let_t(parameter_t *name, term_t *value, term_t *next) {
+    let_t *let = malloc(sizeof(let_t));
+
+    let->kind = "Let";
+    let->name = name;
+    let->value = value;
+    let->next = next;
+
+    return let;
+}
+
+void free_let_t(let_t *let) {
+    free_parameter_t(let->name);
+    free_term_t(let->value);
+    free_term_t(let->next);
+    free(let);
 }

@@ -71,6 +71,17 @@ typedef struct {
     term_t *otherwise;
 } if_t;
 
+typedef struct {
+    const char *text;
+} parameter_t;
+
+typedef struct {
+    const char *kind;
+    parameter_t *name;
+    term_t *value;
+    term_t *next;
+} let_t;
+
 result_t *make_result_t(void *value, const char *type);
 print_t *make_print_t(term_t *value);
 str_t *make_str_t(const char *value);
@@ -82,6 +93,8 @@ first_t *make_first_t(term_t *value);
 second_t *make_second_t(term_t *value);
 binary_t *make_binary_t(const char *op, term_t *lhs, term_t *rhs);
 if_t *make_if_t(term_t *condition, term_t *then, term_t *otherwise);
+parameter_t *make_parameter_t(const char *text);
+let_t *make_let_t(parameter_t *name, term_t *value, term_t *next);
 void free_term_t(term_t *term);
 void free_result_t(result_t *result);
 void free_print_t(print_t *print);
@@ -94,6 +107,8 @@ void free_first_t(first_t *first);
 void free_second_t(second_t *second);
 void free_binary_t(binary_t *binary);
 void free_if_t(if_t *value);
+void free_parameter_t(parameter_t *parameter);
+void free_let_t(let_t *let);
 
 void runtime_error(const char *message, ...);
 

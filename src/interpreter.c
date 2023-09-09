@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 
+stack_t *stack = NULL;
+
 term_t *parse_expression(json_object *expression) {
     const char *kind =
         json_object_get_string(json_object_object_get(expression, "kind"));
@@ -39,6 +41,12 @@ term_t *parse_expression(json_object *expression) {
             parse_expression(json_object_object_get(expression, "condition")),
             parse_expression(json_object_object_get(expression, "then")),
             parse_expression(json_object_object_get(expression, "otherwise")));
+    } else if (match(kind, "Let")) {
+        return (term_t *)make_let_t(
+            make_parameter_t(json_object_get_string(
+                json_object_object_get(expression, "name"))),
+            parse_expression(json_object_object_get(expression, "value")),
+            parse_expression(json_object_object_get(expression, "next")));
     }
 }
 
@@ -197,6 +205,10 @@ result_t *eval_binary(binary_t *binary) {
 }
 
 result_t *eval(term_t *root) {
+    if (stack == NULL) {
+        stack = make_stack_t();
+    }
+
     if (match(root->kind, "Print")) {
         return print((term_t *)root->value);
     } else if (match(root->kind, "Str") || match(root->kind, "Int") ||
@@ -241,5 +253,16 @@ result_t *eval(term_t *root) {
         } else {
             return eval(if_term->otherwise);
         }
+    } else if (match(root->kind, "Let")) {
+        let_t *let = (let_t *)root;
+
+        stack->functions = term_map_add(
+            stack->functions, make_term_map_t(let->name->text, let->value));
+
+        if (let->next != NULL) {
+            return eval(let->next);
+        }
+
+        return make_result_t(NULL, "Void");
     }
 }
