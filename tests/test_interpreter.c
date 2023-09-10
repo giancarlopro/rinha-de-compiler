@@ -1,7 +1,3 @@
-#include <json-c/json.h>
-#include <stdio.h>
-#include <string.h>
-
 #include "../src/interpreter.h"
 #include "minunit.h"
 

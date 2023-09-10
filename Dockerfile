@@ -11,6 +11,6 @@ RUN git clone https://github.com/microsoft/vcpkg.git /vcpkg && \
     /vcpkg/vcpkg integrate install && \
     /vcpkg/vcpkg install json-c
 
-RUN make CFLAGS="-I/vcpkg/installed/x64-linux/include" LDFLAGS="-L/vcpkg/installed/x64-linux/lib"
+RUN make all CFLAGS="-I/vcpkg/installed/x64-linux/include" LDFLAGS="-L/vcpkg/installed/x64-linux/lib"
 
 CMD [ "/app/build/interpreter", "/var/rinha/source.rinha.json" ]

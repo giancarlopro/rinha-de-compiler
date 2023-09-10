@@ -9,4 +9,5 @@ interpreter: src/stack.c src/error.c src/interpreter.c src/alloc.c src/main.c
 test: src/stack.c src/error.c src/interpreter.c src/alloc.c tests/test_interpreter.c
 	gcc $(CFLAGS) $(LDFLAGS) -g -o build/test_interpreter src/stack.c src/error.c src/interpreter.c src/alloc.c tests/test_interpreter.c -ljson-c
 
-defaul: interpreter
+all: interpreter test
+default: interpreter
