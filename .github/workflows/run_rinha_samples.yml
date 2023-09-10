@@ -1,0 +1,24 @@
+name: Docker Build and Run
+
+on:
+  push:
+    branches:
+      - main # or whichever branch you want this to run on
+
+jobs:
+  build_and_run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current repository
+        uses: actions/checkout@v2
+      - name: Build Docker image
+        run: |
+          docker build -t rinha-c-interpreter .
+      - name: Clone rinha-de-compiler repository
+        run: git clone https://github.com/aripiprazole/rinha-de-compiler rinha-de-compiler
+      - name: Run Docker image with JSON files
+        run: |
+          for json_file in rinha-de-compiler/files/*.json; do
+            echo "Running with $json_file..."
+            docker run --rm -v $PWD/$json_file:/var/rinha/source.rinha.json rinha-c-interpreter
+          done
