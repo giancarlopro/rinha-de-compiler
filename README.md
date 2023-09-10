@@ -1,6 +1,6 @@
 # rinha-de-compiler
 
-[![Docker Build and Run](https://github.com/giancarlopro/rinha-de-compiler/actions/workflows/run_rinha_samples.yml/badge.svg)](https://github.com/giancarlopro/rinha-de-compiler/actions/workflows/run_rinha_samples.yml)
+[![Tests And Image](https://github.com/giancarlopro/rinha-de-compiler/actions/workflows/run_rinha_samples.yml/badge.svg)](https://github.com/giancarlopro/rinha-de-compiler/actions/workflows/run_rinha_samples.yml)
 
 Esse projeto é um interpretador criado para ser submetido a [rinha de compilers](https://github.com/aripiprazole/rinha-de-compiler).
 

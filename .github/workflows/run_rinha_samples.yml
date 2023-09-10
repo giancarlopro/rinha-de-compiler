@@ -24,5 +24,6 @@ jobs:
           for json_file in rinha-de-compiler/files/*.json; do
             echo "Running with $json_file..."
             docker run --rm -v $PWD/$json_file:/var/rinha/source.rinha.json rinha-c-interpreter
-            echo "\n\n"
+            echo
+            echo
           done
