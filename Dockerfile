@@ -13,4 +13,4 @@ RUN git clone https://github.com/microsoft/vcpkg.git /vcpkg && \
 
 RUN make CFLAGS="-I/vcpkg/installed/x64-linux/include" LDFLAGS="-L/vcpkg/installed/x64-linux/lib"
 
-CMD [ "/bin/bash", "-c", "build/interpreter", "/var/rinha/source.rinha.json" ]
+CMD [ "/app/build/interpreter", "/var/rinha/source.rinha.json" ]
