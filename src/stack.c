@@ -11,6 +11,8 @@ result_map_t *make_result_map_t(const char *key, result_t *value) {
 }
 
 void free_result_map_t(result_map_t *result_map) {
+    if (result_map == NULL) return;
+
     if (result_map->next != NULL) {
         free_result_map_t(result_map->next);
     }
@@ -30,6 +32,8 @@ term_map_t *make_term_map_t(const char *key, term_t *value) {
 }
 
 void free_term_map_t(term_map_t *term_map) {
+    if (term_map == NULL) return;
+
     if (term_map->next != NULL) {
         free_term_map_t(term_map->next);
     }
@@ -46,6 +50,18 @@ stack_t *make_stack_t() {
     stack->functions = NULL;
 
     return stack;
+}
+
+void free_stack_t(stack_t *stack) {
+    if (stack == NULL) return;
+
+    if (stack->next != NULL) {
+        free_stack_t(stack->next);
+    }
+
+    free_result_map_t(stack->variables);
+    free_term_map_t(stack->functions);
+    free(stack);
 }
 
 term_t *lookup_term(term_map_t *map, const char *key) {
@@ -140,4 +156,12 @@ term_map_t *term_map_add(term_map_t *map, term_map_t *value) {
     current->next = value;
 
     return map;
+}
+
+int stack_len(stack_t *stack) {
+    if (stack == NULL) {
+        return 0;
+    } else {
+        return 1 + stack_len(stack->next);
+    }
 }

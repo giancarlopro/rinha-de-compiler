@@ -415,8 +415,48 @@ static char* test_eval_var() {
 
     result_t* res = eval((term_t*)let);
 
-    mu_assert("Var error, type == Void", !match(res->type, "Void"));
-    mu_assert("Var error, value != 28", (*(int*)res->value) == 28);
+    mu_assert("test_eval_var error, type == Void", !match(res->type, "Void"));
+    mu_assert("test_eval_var error, value != 28", (*(int*)res->value) == 28);
+
+    return 0;
+}
+
+static char* test_eval_function_no_params() {
+    let_t* let =
+        make_let_t(make_parameter_t("f"),
+                   (term_t*)make_function_t(NULL, (term_t*)make_int_t(33)),
+                   (term_t*)make_call_t((term_t*)make_var_t("f"), NULL));
+
+    result_t* res = eval((term_t*)let);
+
+    mu_assert("test_eval_function_no_params error, type == Void",
+              !match(res->type, "Void"));
+    mu_assert("test_eval_function_no_params error, value != 33",
+              (*(int*)res->value) == 33);
+
+    return 0;
+}
+
+static char* test_eval_function() {
+    parameter_t** parameters = malloc(sizeof(parameter_t*) * 1);
+    parameters[0] = make_parameter_t("n");
+
+    var_t* ret_var = make_var_t("n");
+
+    term_t** arguments = malloc(sizeof(term_t*) * 1);
+    arguments[0] = (term_t*)make_int_t(13);
+
+    let_t* let =
+        make_let_t(make_parameter_t("f"),
+                   (term_t*)make_function_t(parameters, (term_t*)ret_var),
+                   (term_t*)make_call_t((term_t*)make_var_t("f"), arguments));
+
+    result_t* res = eval((term_t*)let);
+
+    mu_assert("test_eval_function error, type == Void",
+              !match(res->type, "Void"));
+    mu_assert("test_eval_function error, value != 13",
+              (*(int*)res->value) == 13);
 
     return 0;
 }
@@ -446,6 +486,8 @@ static char* all_tests() {
     mu_run_test(test_eval_if);
     mu_run_test(test_eval_let);
     mu_run_test(test_eval_var);
+    mu_run_test(test_eval_function_no_params);
+    mu_run_test(test_eval_function);
     return 0;
 }
 

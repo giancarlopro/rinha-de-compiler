@@ -4,6 +4,7 @@
 #include <string.h>
 
 stack_t *stack = NULL;
+stack_t *current_stack = NULL;
 
 term_t *parse_expression(json_object *expression) {
     const char *kind =
@@ -50,6 +51,35 @@ term_t *parse_expression(json_object *expression) {
     } else if (match(kind, "Var")) {
         return (term_t *)make_var_t(
             json_object_get_string(json_object_object_get(expression, "text")));
+    } else if (match(kind, "Function")) {
+        json_object *parameters =
+            json_object_object_get(expression, "parameters");
+
+        parameter_t **params = malloc(sizeof(parameter_t *) *
+                                      json_object_array_length(parameters));
+
+        for (int i = 0; i < json_object_array_length(parameters); i++) {
+            params[i] = make_parameter_t(json_object_get_string(
+                json_object_array_get_idx(parameters, i)));
+        }
+
+        return (term_t *)make_function_t(
+            params,
+            parse_expression(json_object_object_get(expression, "value")));
+    } else if (match(kind, "Call")) {
+        json_object *arguments =
+            json_object_object_get(expression, "arguments");
+
+        term_t **args =
+            malloc(sizeof(term_t *) * json_object_array_length(arguments));
+
+        for (int i = 0; i < json_object_array_length(arguments); i++) {
+            args[i] = parse_expression(json_object_array_get_idx(arguments, i));
+        }
+
+        return (term_t *)make_call_t(
+            parse_expression(json_object_object_get(expression, "callee")),
+            args);
     } else {
         runtime_error("Unknown term kind: %s", kind);
     }
@@ -210,10 +240,75 @@ result_t *eval_binary(binary_t *binary) {
     }
 }
 
+void set_current_stack() {
+    current_stack = stack;
+
+    while (current_stack->next != NULL) {
+        current_stack = current_stack->next;
+    }
+}
+
+void add_stack() {
+    stack_t *new_stack = make_stack_t();
+
+    stack = stack_add(stack, new_stack);
+
+    set_current_stack();
+}
+
+void pop_stack() {
+    stack_t *current = stack;
+    stack_t *previous = NULL;
+
+    while (current->next != NULL) {
+        previous = current;
+        current = current->next;
+    }
+
+    previous->next = NULL;
+
+    set_current_stack();
+}
+
+void push_variable(const char *key, result_t *value) {
+    current_stack->variables =
+        result_map_add(current_stack->variables, make_result_map_t(key, value));
+}
+
+void push_function(const char *key, term_t *value) {
+    current_stack->functions =
+        term_map_add(current_stack->functions, make_term_map_t(key, value));
+}
+
+void clean() {
+    free_stack_t(stack);
+    stack = NULL;
+    current_stack = NULL;
+}
+
+function_t *lookup_function(const char *name) {
+    return (function_t *)lookup_term(current_stack->functions, name);
+}
+
+void print_stack_variables() {
+    if (current_stack->variables != NULL) {
+        result_map_t *variables = stack->variables;
+
+        while (variables != NULL) {
+            printf("Variable -> %s = %d\n", variables->key,
+                   *(int *)variables->value->value);
+
+            variables = variables->next;
+        }
+    }
+}
+
 result_t *eval(term_t *root) {
     if (stack == NULL) {
         stack = make_stack_t();
     }
+
+    set_current_stack();
 
     if (match(root->kind, "Print")) {
         return print((term_t *)root->value);
@@ -263,13 +358,11 @@ result_t *eval(term_t *root) {
         let_t *let = (let_t *)root;
 
         if (match(let->value->kind, "Function")) {
-            stack->functions = term_map_add(
-                stack->functions, make_term_map_t(let->name->text, let->value));
+            push_function(let->name->text, let->value);
         } else {
             result_t *result = eval(let->value);
 
-            stack->variables = result_map_replace(
-                stack->variables, make_result_map_t(let->name->text, result));
+            push_variable(let->name->text, result);
         }
 
         if (let->next != NULL) {
@@ -280,11 +373,47 @@ result_t *eval(term_t *root) {
     } else if (match(root->kind, "Var")) {
         var_t *var = (var_t *)root;
 
-        result_t *result = lookup_result(stack->variables, var->text);
+        result_t *result = lookup_result(current_stack->variables, var->text);
 
         if (result == NULL) {
             runtime_error("Unknown variable %s", var->text);
         }
+
+        return result;
+    } else if (match(root->kind, "Function")) {
+        return make_result_t(NULL, "Void");
+    } else if (match(root->kind, "Call")) {
+        call_t *call = (call_t *)root;
+        function_t *function = NULL;
+
+        if (match(call->callee->kind, "Var")) {
+            function = lookup_function(((var_t *)call->callee)->text);
+        }
+
+        if (function == NULL) {
+            runtime_error("Unknown function %s", ((var_t *)call->callee)->text);
+        }
+
+        if (call->arguments != NULL && function->parameters != NULL &&
+            len(call->arguments) != len(function->parameters)) {
+            runtime_error("Wrong number of arguments");
+        }
+
+        add_stack();
+
+        if (call->arguments != NULL && function->parameters != NULL) {
+            for (int i = 0; i < len(call->arguments); i++) {
+                const char *parameter = function->parameters[i]->text;
+
+                result_t *result = eval(call->arguments[i]);
+
+                push_variable(parameter, result);
+            }
+        }
+
+        result_t *result = eval(function->value);
+
+        pop_stack();
 
         return result;
     } else {

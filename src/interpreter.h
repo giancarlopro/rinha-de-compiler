@@ -5,6 +5,7 @@
 
 #define match(s1, s2) strcmp(s1, s2) == 0
 #define alloc(t) malloc(sizeof(t))
+#define len(a) sizeof(a) / sizeof(a[0])
 
 typedef struct {
     void *value;
@@ -87,6 +88,18 @@ typedef struct {
     const char *text;
 } var_t;
 
+typedef struct {
+    const char *kind;
+    parameter_t **parameters;
+    term_t *value;
+} function_t;
+
+typedef struct {
+    const char *kind;
+    term_t *callee;
+    term_t **arguments;
+} call_t;
+
 result_t *make_result_t(void *value, const char *type);
 print_t *make_print_t(term_t *value);
 str_t *make_str_t(const char *value);
@@ -101,6 +114,8 @@ if_t *make_if_t(term_t *condition, term_t *then, term_t *otherwise);
 parameter_t *make_parameter_t(const char *text);
 let_t *make_let_t(parameter_t *name, term_t *value, term_t *next);
 var_t *make_var_t(const char *text);
+function_t *make_function_t(parameter_t **parameters, term_t *value);
+call_t *make_call_t(term_t *callee, term_t **arguments);
 void free_term_t(term_t *term);
 void free_result_t(result_t *result);
 void free_print_t(print_t *print);
@@ -116,6 +131,9 @@ void free_if_t(if_t *value);
 void free_parameter_t(parameter_t *parameter);
 void free_let_t(let_t *let);
 void free_var_t(var_t *var);
+void free_function_t(function_t *function);
+void free_call_t(call_t *call);
+void clean();
 
 void runtime_error(const char *message, ...);
 
@@ -145,6 +163,8 @@ void free_result_map_t(result_map_t *result_map);
 term_map_t *make_term_map_t(const char *key, term_t *value);
 void free_term_map_t(term_map_t *term_map);
 stack_t *make_stack_t();
+void free_stack_t(stack_t *stack);
+int stack_len(stack_t *stack);
 term_t *lookup_term(term_map_t *map, const char *key);
 result_t *lookup_result(result_map_t *map, const char *key);
 stack_t *stack_add(stack_t *stack, stack_t *value);

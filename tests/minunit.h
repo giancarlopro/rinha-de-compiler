@@ -8,5 +8,6 @@
         char *message = test();      \
         tests_run++;                 \
         if (message) return message; \
+        clean();                     \
     } while (0)
 extern int tests_run;
