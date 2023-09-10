@@ -8,6 +8,11 @@
 #define len(a) sizeof(a) / sizeof(a[0])
 
 typedef struct {
+    size_t length;
+    void **values;
+} array_t;
+
+typedef struct {
     void *value;
     const char *type;
 } result_t;
@@ -90,15 +95,20 @@ typedef struct {
 
 typedef struct {
     const char *kind;
-    parameter_t **parameters;
+    array_t *parameters;
     term_t *value;
 } function_t;
 
 typedef struct {
     const char *kind;
     term_t *callee;
-    term_t **arguments;
+    array_t *arguments;
 } call_t;
+
+typedef struct {
+    const char *key;
+    result_t *value;
+} variable_t;
 
 result_t *make_result_t(void *value, const char *type);
 print_t *make_print_t(term_t *value);
@@ -114,8 +124,10 @@ if_t *make_if_t(term_t *condition, term_t *then, term_t *otherwise);
 parameter_t *make_parameter_t(const char *text);
 let_t *make_let_t(parameter_t *name, term_t *value, term_t *next);
 var_t *make_var_t(const char *text);
-function_t *make_function_t(parameter_t **parameters, term_t *value);
-call_t *make_call_t(term_t *callee, term_t **arguments);
+function_t *make_function_t(array_t *parameters, term_t *value);
+call_t *make_call_t(term_t *callee, array_t *arguments);
+variable_t *make_variable_t(const char *key, result_t *value);
+array_t *make_array_t(size_t length, void **values);
 void free_term_t(term_t *term);
 void free_result_t(result_t *result);
 void free_print_t(print_t *print);
@@ -134,6 +146,8 @@ void free_var_t(var_t *var);
 void free_function_t(function_t *function);
 void free_call_t(call_t *call);
 void clean();
+void free_variable_t(variable_t *variable);
+void free_array_t(array_t *array);
 
 void runtime_error(const char *message, ...);
 

@@ -261,7 +261,7 @@ void free_var_t(var_t *var) {
     free(var);
 }
 
-function_t *make_function_t(parameter_t **parameters, term_t *value) {
+function_t *make_function_t(array_t *parameters, term_t *value) {
     function_t *function = malloc(sizeof(function_t));
 
     function->kind = "Function";
@@ -278,7 +278,7 @@ void free_function_t(function_t *function) {
     free(function);
 }
 
-call_t *make_call_t(term_t *callee, term_t **arguments) {
+call_t *make_call_t(term_t *callee, array_t *arguments) {
     call_t *call = malloc(sizeof(call_t));
 
     call->kind = "Call";
@@ -293,4 +293,40 @@ void free_call_t(call_t *call) {
 
     free_term_t(call->callee);
     free(call);
+}
+
+variable_t *make_variable_t(const char *key, result_t *value) {
+    variable_t *variable = malloc(sizeof(variable_t));
+
+    variable->key = key;
+    variable->value = value;
+
+    return variable;
+}
+
+void free_variable_t(variable_t *variable) {
+    if (variable == NULL) return;
+
+    free_result_t(variable->value);
+    free(variable);
+}
+
+array_t *make_array_t(size_t length, void **values) {
+    array_t *array = malloc(sizeof(array_t));
+
+    array->length = length;
+    array->values = values;
+
+    return array;
+}
+
+void free_array_t(array_t *array) {
+    if (array == NULL) return;
+
+    for (size_t i = 0; i < array->length; i++) {
+        if (array->values[i] != NULL) free(array->values[i]);
+    }
+
+    free(array->values);
+    free(array);
 }

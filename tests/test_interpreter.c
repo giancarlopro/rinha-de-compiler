@@ -11,30 +11,6 @@ const char* PRINT_JSON =
     "{\"kind\": \"Print\", \"value\": {\"kind\": \"Str\", \"value\": "
     "\"data\"}}";
 
-static char* test_parse_str_expression() {
-    json_object* root = json_tokener_parse(STR_JSON);
-
-    term_t* term = parse_expression(root);
-
-    mu_assert("error, term->kind != \"Str\"", strcmp(term->kind, "Str") == 0);
-    mu_assert("error, value != \"data\"",
-              strcmp(((char*)term->value), "data") == 0);
-}
-
-static char* test_parse_print_expression() {
-    json_object* root = json_tokener_parse(PRINT_JSON);
-
-    term_t* term = parse_expression(root);
-
-    mu_assert("error, term->kind != \"Print\"",
-              strcmp(term->kind, "Print") == 0);
-
-    str_t* str = term->value;
-
-    mu_assert("error, str->kind != \"Str\"", strcmp(str->kind, "Str") == 0);
-    mu_assert("error, str->value != \"data\"", strcmp(str->value, "data") == 0);
-}
-
 static char* test_eval_str() {
     str_t* str = malloc(sizeof(str_t));
 
@@ -448,8 +424,10 @@ static char* test_eval_function() {
 
     let_t* let =
         make_let_t(make_parameter_t("f"),
-                   (term_t*)make_function_t(parameters, (term_t*)ret_var),
-                   (term_t*)make_call_t((term_t*)make_var_t("f"), arguments));
+                   (term_t*)make_function_t(make_array_t(1, (void**)parameters),
+                                            (term_t*)ret_var),
+                   (term_t*)make_call_t((term_t*)make_var_t("f"),
+                                        make_array_t(1, (void**)arguments)));
 
     result_t* res = eval((term_t*)let);
 
@@ -457,6 +435,337 @@ static char* test_eval_function() {
               !match(res->type, "Void"));
     mu_assert("test_eval_function error, value != 13",
               (*(int*)res->value) == 13);
+
+    return 0;
+}
+
+static char* test_parse_str_expression() {
+    json_object* root = json_tokener_parse(STR_JSON);
+
+    term_t* term = parse_expression(root);
+
+    mu_assert("error, term->kind != \"Str\"", strcmp(term->kind, "Str") == 0);
+    mu_assert("error, value != \"data\"",
+              strcmp(((char*)term->value), "data") == 0);
+}
+
+static char* test_parse_print_expression() {
+    json_object* root = json_tokener_parse(PRINT_JSON);
+
+    term_t* term = parse_expression(root);
+
+    mu_assert("error, term->kind != \"Print\"",
+              strcmp(term->kind, "Print") == 0);
+
+    str_t* str = term->value;
+
+    mu_assert("error, str->kind != \"Str\"", strcmp(str->kind, "Str") == 0);
+    mu_assert("error, str->value != \"data\"", strcmp(str->value, "data") == 0);
+}
+
+static char* test_parse_int() {
+    const char* data = "{\"kind\": \"Int\", \"value\": 1}";
+    json_object* root = json_tokener_parse(data);
+
+    term_t* term = parse_expression(root);
+
+    mu_assert("error, term->kind != \"Int\"", match(term->kind, "Int"));
+    mu_assert("error, term->value != 1", (*(int*)term->value) == 1);
+
+    return 0;
+}
+
+static char* test_parse_bool() {
+    const char* data = "{\"kind\": \"Bool\", \"value\": true}";
+    json_object* root = json_tokener_parse(data);
+
+    term_t* term = parse_expression(root);
+
+    mu_assert("error, term->kind != \"Bool\"", match(term->kind, "Bool"));
+    mu_assert("error, term->value != true", (*(bool*)term->value) == true);
+
+    return 0;
+}
+
+static char* test_parse_tuple() {
+    const char* data =
+        "{\"kind\": \"Tuple\", \"first\": {\"kind\": \"Int\", "
+        "\"value\": 1}, \"second\": {\"kind\": \"Int\", "
+        "\"value\": 2}}";
+    json_object* root = json_tokener_parse(data);
+
+    term_t* term = parse_expression(root);
+
+    mu_assert("error, term->kind != \"Tuple\"", match(term->kind, "Tuple"));
+
+    tuple_t* tuple = (tuple_t*)term;
+
+    mu_assert("error, tuple->first->kind != \"Int\"",
+              match(tuple->first->kind, "Int"));
+    mu_assert("error, tuple->first->value != 1",
+              (*(int*)tuple->first->value) == 1);
+
+    mu_assert("error, tuple->second->kind != \"Int\"",
+              match(tuple->second->kind, "Int"));
+    mu_assert("error, tuple->second->value != 2",
+              (*(int*)tuple->second->value) == 2);
+
+    return 0;
+}
+
+static char* test_parse_first() {
+    const char* data =
+        "{\"kind\": \"First\", \"value\": {\"kind\": \"Tuple\", \"first\": "
+        "{\"kind\": \"Int\", \"value\": 1}, \"second\": {\"kind\": \"Int\", "
+        "\"value\": 2}}}";
+    json_object* root = json_tokener_parse(data);
+
+    term_t* term = parse_expression(root);
+
+    mu_assert("error, term->kind != \"First\"", match(term->kind, "First"));
+
+    first_t* first = (first_t*)term;
+
+    mu_assert("error, first->value->kind != \"Tuple\"",
+              match(first->value->kind, "Tuple"));
+
+    tuple_t* tuple = (tuple_t*)first->value;
+
+    mu_assert("error, tuple->first->kind != \"Int\"",
+              match(tuple->first->kind, "Int"));
+    mu_assert("error, tuple->first->value != 1",
+              (*(int*)tuple->first->value) == 1);
+
+    mu_assert("error, tuple->second->kind != \"Int\"",
+              match(tuple->second->kind, "Int"));
+    mu_assert("error, tuple->second->value != 2",
+              (*(int*)tuple->second->value) == 2);
+
+    return 0;
+}
+
+static char* test_parse_second() {
+    const char* data =
+        "{\"kind\": \"Second\", \"value\": {\"kind\": \"Tuple\", \"first\": "
+        "{\"kind\": \"Int\", \"value\": 1}, \"second\": {\"kind\": \"Int\", "
+        "\"value\": 2}}}";
+    json_object* root = json_tokener_parse(data);
+
+    term_t* term = parse_expression(root);
+
+    mu_assert("error, term->kind != \"Second\"", match(term->kind, "Second"));
+
+    second_t* second = (second_t*)term;
+
+    mu_assert("error, second->value->kind != \"Tuple\"",
+              match(second->value->kind, "Tuple"));
+
+    tuple_t* tuple = (tuple_t*)second->value;
+
+    mu_assert("error, tuple->first->kind != \"Int\"",
+              match(tuple->first->kind, "Int"));
+    mu_assert("error, tuple->first->value != 1",
+              (*(int*)tuple->first->value) == 1);
+
+    mu_assert("error, tuple->second->kind != \"Int\"",
+              match(tuple->second->kind, "Int"));
+    mu_assert("error, tuple->second->value != 2",
+              (*(int*)tuple->second->value) == 2);
+
+    return 0;
+}
+
+static char* test_parse_binary() {
+    const char* data =
+        "{\"kind\": \"Binary\", \"op\": \"Add\", \"lhs\": {\"kind\": "
+        "\"Int\", \"value\": 1}, \"rhs\": {\"kind\": \"Int\", \"value\": "
+        "2}}";
+    json_object* root = json_tokener_parse(data);
+
+    term_t* term = parse_expression(root);
+
+    mu_assert("error, term->kind != \"Binary\"", match(term->kind, "Binary"));
+
+    binary_t* binary = (binary_t*)term;
+
+    mu_assert("error, binary->operator != \"Add\"", match(binary->op, "Add"));
+
+    mu_assert("error, binary->left->kind != \"Int\"",
+              match(binary->lhs->kind, "Int"));
+    mu_assert("error, binary->left->value != 1",
+              (*(int*)binary->lhs->value) == 1);
+
+    mu_assert("error, binary->right->kind != \"Int\"",
+              match(binary->rhs->kind, "Int"));
+    mu_assert("error, binary->right->value != 2",
+              (*(int*)binary->rhs->value) == 2);
+
+    return 0;
+}
+
+static char* test_parse_if() {
+    const char* data =
+        "{\"kind\": \"If\", \"condition\": {\"kind\": \"Bool\", \"value\": "
+        "true}, \"then\": {\"kind\": \"Int\", \"value\": 1}, \"otherwise\": "
+        "{\"kind\": \"Int\", \"value\": 2}}";
+    json_object* root = json_tokener_parse(data);
+
+    term_t* term = parse_expression(root);
+
+    mu_assert("error, term->kind != \"If\"", match(term->kind, "If"));
+
+    if_t* if_ = (if_t*)term;
+
+    mu_assert("error, if_->condition->kind != \"Bool\"",
+              match(if_->condition->kind, "Bool"));
+    mu_assert("error, if_->condition->value != true",
+              (*(bool*)if_->condition->value) == true);
+
+    mu_assert("error, if_->then->kind != \"Int\"",
+              match(if_->then->kind, "Int"));
+    mu_assert("error, if_->then->value != 1", (*(int*)if_->then->value) == 1);
+
+    mu_assert("error, if_->otherwise->kind != \"Int\"",
+              match(if_->otherwise->kind, "Int"));
+    mu_assert("error, if_->otherwise->value != 2",
+              (*(int*)if_->otherwise->value) == 2);
+
+    return 0;
+}
+
+static char* test_parse_let() {
+    const char* data =
+        "{\"kind\": \"Let\", \"name\": { \"text\": \"x\" }, \"value\": "
+        "{\"kind\": \"Int\", "
+        "\"value\": 1}, \"next\": {\"kind\": \"Int\", \"value\": 2}}";
+    json_object* root = json_tokener_parse(data);
+
+    term_t* term = parse_expression(root);
+
+    mu_assert("error, term->kind != \"Let\"", match(term->kind, "Let"));
+
+    let_t* let = (let_t*)term;
+
+    mu_assert("error, let->name != \"x\"", match(let->name->text, "x"));
+
+    mu_assert("error, let->value->kind != \"Int\"",
+              match(let->value->kind, "Int"));
+    mu_assert("error, let->value->value != 1", (*(int*)let->value->value) == 1);
+
+    mu_assert("error, let->next->kind != \"Int\"",
+              match(let->next->kind, "Int"));
+    mu_assert("error, let->next->value != 2", (*(int*)let->next->value) == 2);
+
+    return 0;
+}
+
+static char* test_parse_var() {
+    const char* data = "{\"kind\": \"Var\", \"text\": \"x\"}";
+    json_object* root = json_tokener_parse(data);
+
+    term_t* term = parse_expression(root);
+
+    mu_assert("error, term->kind != \"Var\"", match(term->kind, "Var"));
+
+    var_t* var = (var_t*)term;
+
+    mu_assert("error, var->text != \"x\"", match(var->text, "x"));
+
+    return 0;
+}
+
+static char* test_parse_function() {
+    const char* data =
+        "{\"kind\": \"Function\", \"parameters\": [{\"text\": \"x\"}, "
+        "{\"text\": \"y\"}], \"value\": {\"kind\": \"Int\", \"value\": 1}}";
+    json_object* root = json_tokener_parse(data);
+
+    term_t* term = parse_expression(root);
+
+    mu_assert("error, term->kind != \"Function\"",
+              match(term->kind, "Function"));
+
+    function_t* function = (function_t*)term;
+
+    parameter_t** parameters = (parameter_t**)function->parameters->values;
+
+    mu_assert("error, parameters[0]->text != \"x\"",
+              match(parameters[0]->text, "x"));
+    mu_assert("error, parameters[1]->text != \"y\"",
+              match(parameters[1]->text, "y"));
+
+    mu_assert("error, function->value->kind != \"Int\"",
+              match(function->value->kind, "Int"));
+    mu_assert("error, function->value->value != 1",
+              (*(int*)function->value->value) == 1);
+
+    return 0;
+}
+
+static char* test_parse_call() {
+    const char* data =
+        "{\"kind\": \"Call\", \"callee\": {\"kind\": \"Var\", \"text\": "
+        "\"teste\"}, \"arguments\": [{ \"kind\": \"Str\", \"value\": \"hello\" "
+        "}]}";
+    json_object* root = json_tokener_parse(data);
+
+    term_t* term = parse_expression(root);
+
+    mu_assert("error, term->kind != \"Call\"", match(term->kind, "Call"));
+
+    call_t* call = (call_t*)term;
+
+    mu_assert("error, call->function->kind != \"Function\"",
+              match(call->callee->kind, "Var"));
+
+    term_t** arguments = (term_t**)call->arguments->values;
+
+    mu_assert("error, arguments[0]->kind != \"Str\"",
+              match(arguments[0]->kind, "Str"));
+    mu_assert("error, arguments[0]->value != \"hello\"",
+              match(arguments[0]->value, "hello"));
+
+    return 0;
+}
+
+const char* letcall =
+    "{"
+    "    \"name\": \"let.rinha\","
+    "    \"expression\": {"
+    "        \"kind\": \"Let\","
+    "        \"name\": {"
+    "            \"text\": \"a\""
+    "        },"
+    "        \"value\": {"
+    "            \"kind\": \"Function\","
+    "            \"parameters\": [],"
+    "            \"value\": {"
+    "                \"kind\": \"Int\","
+    "                \"value\": 10"
+    "            }"
+    "        },"
+    "        \"next\": {"
+    "            \"kind\": \"Print\","
+    "            \"value\": {"
+    "                \"kind\": \"Call\","
+    "                \"callee\": {"
+    "                    \"kind\": \"Var\","
+    "                    \"text\": \"a\""
+    "                },"
+    "                \"arguments\": []"
+    "            }"
+    "        }"
+    "    }"
+    "}";
+
+static char* test_eval_let_call_function_no_params() {
+    json_object* root = json_tokener_parse(letcall);
+    json_object* expression = json_object_object_get(root, "expression");
+
+    term_t* term = parse_expression(expression);
+    result_t* res = eval(term);
+
+    mu_assert("error, res->type != Int", match(res->type, "Void"));
 
     return 0;
 }
@@ -488,6 +797,18 @@ static char* all_tests() {
     mu_run_test(test_eval_var);
     mu_run_test(test_eval_function_no_params);
     mu_run_test(test_eval_function);
+    mu_run_test(test_parse_int);
+    mu_run_test(test_parse_bool);
+    mu_run_test(test_parse_tuple);
+    mu_run_test(test_parse_first);
+    mu_run_test(test_parse_second);
+    mu_run_test(test_parse_binary);
+    mu_run_test(test_parse_if);
+    mu_run_test(test_parse_let);
+    mu_run_test(test_parse_var);
+    mu_run_test(test_parse_function);
+    mu_run_test(test_parse_call);
+    mu_run_test(test_eval_let_call_function_no_params);
     return 0;
 }
 

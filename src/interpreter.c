@@ -7,6 +7,10 @@ stack_t *stack = NULL;
 stack_t *current_stack = NULL;
 
 term_t *parse_expression(json_object *expression) {
+    if (expression == NULL) {
+        runtime_error("Syntax error");
+    }
+
     const char *kind =
         json_object_get_string(json_object_object_get(expression, "kind"));
 
@@ -44,8 +48,8 @@ term_t *parse_expression(json_object *expression) {
             parse_expression(json_object_object_get(expression, "otherwise")));
     } else if (match(kind, "Let")) {
         return (term_t *)make_let_t(
-            make_parameter_t(json_object_get_string(
-                json_object_object_get(expression, "name"))),
+            make_parameter_t(json_object_get_string(json_object_object_get(
+                json_object_object_get(expression, "name"), "text"))),
             parse_expression(json_object_object_get(expression, "value")),
             parse_expression(json_object_object_get(expression, "next")));
     } else if (match(kind, "Var")) {
@@ -55,31 +59,42 @@ term_t *parse_expression(json_object *expression) {
         json_object *parameters =
             json_object_object_get(expression, "parameters");
 
-        parameter_t **params = malloc(sizeof(parameter_t *) *
-                                      json_object_array_length(parameters));
+        size_t length = json_object_array_length(parameters);
 
-        for (int i = 0; i < json_object_array_length(parameters); i++) {
-            params[i] = make_parameter_t(json_object_get_string(
-                json_object_array_get_idx(parameters, i)));
+        parameter_t **params = NULL;
+        if (length > 0) {
+            params = malloc(sizeof(parameter_t *) * length);
+
+            for (int i = 0; i < length; i++) {
+                params[i] = make_parameter_t(
+                    json_object_get_string(json_object_object_get(
+                        json_object_array_get_idx(parameters, i), "text")));
+            }
         }
 
         return (term_t *)make_function_t(
-            params,
+            make_array_t(length, (void **)params),
             parse_expression(json_object_object_get(expression, "value")));
     } else if (match(kind, "Call")) {
         json_object *arguments =
             json_object_object_get(expression, "arguments");
 
-        term_t **args =
-            malloc(sizeof(term_t *) * json_object_array_length(arguments));
+        size_t length = json_object_array_length(arguments);
 
-        for (int i = 0; i < json_object_array_length(arguments); i++) {
-            args[i] = parse_expression(json_object_array_get_idx(arguments, i));
+        term_t **args = NULL;
+
+        if (length > 0) {
+            args = malloc(sizeof(term_t *) * length);
+
+            for (int i = 0; i < length; i++) {
+                args[i] =
+                    parse_expression(json_object_array_get_idx(arguments, i));
+            }
         }
 
         return (term_t *)make_call_t(
             parse_expression(json_object_object_get(expression, "callee")),
-            args);
+            make_array_t(length, (void **)args));
     } else {
         runtime_error("Unknown term kind: %s", kind);
     }
@@ -88,18 +103,18 @@ term_t *parse_expression(json_object *expression) {
 result_t *print(term_t *root) {
     result_t *res = eval(root);
 
-    if (match(root->kind, "Str")) {
+    if (match(res->type, "Str")) {
         printf("%s", (char *)res->value);
-    } else if (match(root->kind, "Int")) {
+    } else if (match(res->type, "Int")) {
         printf("%d", *(int *)res->value);
-    } else if (match(root->kind, "Bool")) {
+    } else if (match(res->type, "Bool")) {
         bool value = *(bool *)res->value;
         if (value) {
             printf("true");
         } else {
             printf("false");
         }
-    } else if (match(root->kind, "Tuple")) {
+    } else if (match(res->type, "Tuple")) {
         tuple_t *tuple = (tuple_t *)root;
 
         printf("(");
@@ -107,6 +122,8 @@ result_t *print(term_t *root) {
         printf(", ");
         print(tuple->second);
         printf(")");
+    } else {
+        runtime_error("Print for kind %s not implemented", res->type);
     }
 
     return make_result_t(NULL, "Void");
@@ -119,6 +136,8 @@ char *as_str(result_t *result) {
         return data;
     } else if (match(result->type, "Str")) {
         return (char *)result->value;
+    } else {
+        runtime_error("Cannot convert %s to string", result->type);
     }
 }
 
@@ -152,6 +171,8 @@ result_t *eval_binary(binary_t *binary) {
             strcat(result, right_str);
 
             return make_result_t((void *)result, "Str");
+        } else {
+            runtime_error("Cannot add %s and %s", left->type, right->type);
         }
     } else if (match(binary->op, "Sub")) {
         int *buff = malloc(sizeof(int));
@@ -237,6 +258,33 @@ result_t *eval_binary(binary_t *binary) {
         *buff = *(bool *)left->value || *(bool *)right->value;
 
         return make_result_t((void *)buff, "Bool");
+    } else {
+        runtime_error("Unknown binary operator %s", binary->op);
+    }
+}
+
+void print_stack_variables() {
+    int stack_size = stack_len(stack);
+
+    if (current_stack->variables != NULL) {
+        result_map_t *variables = current_stack->variables;
+
+        while (variables != NULL) {
+            printf("[%d] Variable -> %s = %d\n", stack_size, variables->key,
+                   *(int *)variables->value->value);
+
+            variables = variables->next;
+        }
+    }
+
+    if (current_stack->functions != NULL) {
+        term_map_t *functions = current_stack->functions;
+
+        while (functions != NULL) {
+            printf("[%d] Function -> %s\n", stack_size, functions->key);
+
+            functions = functions->next;
+        }
     }
 }
 
@@ -246,6 +294,8 @@ void set_current_stack() {
     while (current_stack->next != NULL) {
         current_stack = current_stack->next;
     }
+
+    // print_stack_variables();
 }
 
 void add_stack() {
@@ -276,8 +326,12 @@ void push_variable(const char *key, result_t *value) {
 }
 
 void push_function(const char *key, term_t *value) {
-    current_stack->functions =
-        term_map_add(current_stack->functions, make_term_map_t(key, value));
+    if (stack == NULL) {
+        stack = make_stack_t();
+    }
+
+    stack->functions =
+        term_map_add(stack->functions, make_term_map_t(key, value));
 }
 
 void clean() {
@@ -287,20 +341,7 @@ void clean() {
 }
 
 function_t *lookup_function(const char *name) {
-    return (function_t *)lookup_term(current_stack->functions, name);
-}
-
-void print_stack_variables() {
-    if (current_stack->variables != NULL) {
-        result_map_t *variables = stack->variables;
-
-        while (variables != NULL) {
-            printf("Variable -> %s = %d\n", variables->key,
-                   *(int *)variables->value->value);
-
-            variables = variables->next;
-        }
-    }
+    return (function_t *)lookup_term(stack->functions, name);
 }
 
 result_t *eval(term_t *root) {
@@ -349,7 +390,7 @@ result_t *eval(term_t *root) {
 
         result_t *condition = eval(if_term->condition);
 
-        if (*(int *)condition->value) {
+        if (*(bool *)condition->value) {
             return eval(if_term->then);
         } else {
             return eval(if_term->otherwise);
@@ -399,15 +440,31 @@ result_t *eval(term_t *root) {
             runtime_error("Wrong number of arguments");
         }
 
-        add_stack();
+        variable_t **variables = NULL;
 
         if (call->arguments != NULL && function->parameters != NULL) {
-            for (int i = 0; i < len(call->arguments); i++) {
-                const char *parameter = function->parameters[i]->text;
+            size_t length = call->arguments->length;
 
-                result_t *result = eval(call->arguments[i]);
+            variables = malloc(sizeof(variable_t *) * length);
 
-                push_variable(parameter, result);
+            parameter_t **parameters =
+                (parameter_t **)function->parameters->values;
+            term_t **arguments = (term_t **)call->arguments->values;
+
+            for (int i = 0; i < length; i++) {
+                const char *parameter = parameters[i]->text;
+
+                result_t *result = eval(arguments[i]);
+
+                variables[i] = make_variable_t(parameter, result);
+            }
+        }
+
+        add_stack();
+
+        if (call->arguments != NULL) {
+            for (int i = 0; i < call->arguments->length; i++) {
+                push_variable(variables[i]->key, variables[i]->value);
             }
         }
 
