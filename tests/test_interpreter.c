@@ -761,7 +761,8 @@ static char* test_eval_let_call_function_no_params() {
     term_t* term = parse_expression(expression);
     result_t* res = eval(term);
 
-    mu_assert("error, res->type != Void", match(res->type, "Void"));
+    mu_assert("error, res->type != Int", match(res->type, "Int"));
+    mu_assert("error, res->value != 10", (*(int*)res->value) == 10);
 
     return 0;
 }
@@ -776,6 +777,21 @@ static char* test_closure_works() {
             (term_t*)make_call_t((term_t*)make_var_t("func"), NULL)));
 
     result_t* res = eval((term_t*)let);
+
+    mu_assert("error, res->type != Int", match(res->type, "Int"));
+    mu_assert("error, res->value != 1", (*(int*)res->value) == 1);
+
+    return 0;
+}
+
+static char* test_print_returns_value() {
+    const char* data =
+        "{\"kind\": \"Print\", \"value\": {\"kind\": \"Int\", \"value\": 1}}";
+
+    json_object* root = json_tokener_parse(data);
+
+    term_t* term = parse_expression(root);
+    result_t* res = eval(term);
 
     mu_assert("error, res->type != Int", match(res->type, "Int"));
     mu_assert("error, res->value != 1", (*(int*)res->value) == 1);
@@ -823,6 +839,7 @@ static char* all_tests() {
     mu_run_test(test_parse_call);
     mu_run_test(test_eval_let_call_function_no_params);
     mu_run_test(test_closure_works);
+    mu_run_test(test_print_returns_value);
     return 0;
 }
 

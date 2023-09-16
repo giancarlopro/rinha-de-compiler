@@ -125,7 +125,7 @@ result_t *print(term_t *root) {
         runtime_error("Print for kind %s not implemented", res->type);
     }
 
-    return make_result_t(NULL, "Void");
+    return res;
 }
 
 char *as_str(result_t *result) {
