@@ -168,6 +168,7 @@ typedef struct term_map_t {
 
 typedef struct stack_t {
     struct stack_t *next;
+    struct stack_t *parent;
     result_map_t *variables;
     term_map_t *functions;
 } stack_t;
