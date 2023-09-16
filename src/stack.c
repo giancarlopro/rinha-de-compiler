@@ -45,7 +45,7 @@ void free_term_map_t(term_map_t *term_map) {
 stack_t *make_stack_t() {
     stack_t *stack = malloc(sizeof(stack_t));
 
-    stack->next = NULL;
+    stack->parent = NULL;
     stack->variables = NULL;
     stack->functions = NULL;
 
@@ -55,8 +55,8 @@ stack_t *make_stack_t() {
 void free_stack_t(stack_t *stack) {
     if (stack == NULL) return;
 
-    if (stack->next != NULL) {
-        free_stack_t(stack->next);
+    if (stack->parent != NULL) {
+        free_stack_t(stack->parent);
     }
 
     free_result_map_t(stack->variables);
@@ -85,19 +85,13 @@ result_t *lookup_result(result_map_t *map, const char *key) {
 }
 
 stack_t *stack_add(stack_t *stack, stack_t *value) {
-    if (stack == NULL) {
-        return value;
-    }
+    if (stack == NULL) return value;
+    if (value == NULL) return stack;
 
-    stack_t *current = stack;
+    value->parent = stack;
+    stack->next = value;
 
-    while (current->next != NULL) {
-        current = current->next;
-    }
-
-    current->next = value;
-
-    return stack;
+    return value;
 }
 
 result_map_t *result_map_add(result_map_t *map, result_map_t *value) {

@@ -4,7 +4,6 @@
 #include <string.h>
 
 stack_t *stack = NULL;
-stack_t *current_stack = NULL;
 
 term_t *parse_expression(json_object *expression) {
     if (expression == NULL) {
@@ -104,34 +103,34 @@ result_t *print(term_t *root) {
     result_t *res = eval(root);
 
     if (match(res->type, "Str")) {
-        printf("%s", (char *)res->value);
+        printf_c("%s", (char *)res->value);
     } else if (match(res->type, "Int")) {
-        printf("%d", *(int *)res->value);
+        printf_c("%d", *(int *)res->value);
     } else if (match(res->type, "Bool")) {
         bool value = *(bool *)res->value;
         if (value) {
-            printf("true");
+            printf_c("true");
         } else {
-            printf("false");
+            printf_c("false");
         }
     } else if (match(res->type, "Tuple")) {
         tuple_t *tuple = (tuple_t *)root;
 
-        printf("(");
+        printf_c("(");
         print(tuple->first);
-        printf(", ");
+        printf_c(", ");
         print(tuple->second);
-        printf(")");
+        printf_c(")");
     } else {
         runtime_error("Print for kind %s not implemented", res->type);
     }
 
-    return make_result_t(NULL, "Void");
+    return res;
 }
 
 char *as_str(result_t *result) {
     if (match(result->type, "Int")) {
-        char *data = malloc(20);
+        char *data = malloc(100);
         sprintf(data, "%d", *(int *)result->value);
         return data;
     } else if (match(result->type, "Str")) {
@@ -263,11 +262,12 @@ result_t *eval_binary(binary_t *binary) {
     }
 }
 
+/** debug only function */
 void print_stack_variables() {
     int stack_size = stack_len(stack);
 
-    if (current_stack->variables != NULL) {
-        result_map_t *variables = current_stack->variables;
+    if (stack->variables != NULL) {
+        result_map_t *variables = stack->variables;
 
         while (variables != NULL) {
             printf("[%d] Variable -> %s = %d\n", stack_size, variables->key,
@@ -277,8 +277,8 @@ void print_stack_variables() {
         }
     }
 
-    if (current_stack->functions != NULL) {
-        term_map_t *functions = current_stack->functions;
+    if (stack->functions != NULL) {
+        term_map_t *functions = stack->functions;
 
         while (functions != NULL) {
             printf("[%d] Function -> %s\n", stack_size, functions->key);
@@ -288,41 +288,20 @@ void print_stack_variables() {
     }
 }
 
-void set_current_stack() {
-    current_stack = stack;
-
-    while (current_stack->next != NULL) {
-        current_stack = current_stack->next;
-    }
-
-    // print_stack_variables();
-}
-
 void add_stack() {
     stack_t *new_stack = make_stack_t();
 
     stack = stack_add(stack, new_stack);
-
-    set_current_stack();
 }
 
 void pop_stack() {
-    stack_t *current = stack;
-    stack_t *previous = NULL;
-
-    while (current->next != NULL) {
-        previous = current;
-        current = current->next;
-    }
-
-    previous->next = NULL;
-
-    set_current_stack();
+    stack = stack->parent;
+    stack->next = NULL;
 }
 
 void push_variable(const char *key, result_t *value) {
-    current_stack->variables =
-        result_map_add(current_stack->variables, make_result_map_t(key, value));
+    stack->variables =
+        result_map_add(stack->variables, make_result_map_t(key, value));
 }
 
 void push_function(const char *key, term_t *value) {
@@ -330,26 +309,52 @@ void push_function(const char *key, term_t *value) {
         stack = make_stack_t();
     }
 
-    stack->functions =
-        term_map_add(stack->functions, make_term_map_t(key, value));
+    stack_t *root = stack;
+
+    while (root->parent != NULL) {
+        root = root->parent;
+    }
+
+    root->functions =
+        term_map_add(root->functions, make_term_map_t(key, value));
 }
 
 void clean() {
     free_stack_t(stack);
     stack = NULL;
-    current_stack = NULL;
 }
 
 function_t *lookup_function(const char *name) {
-    return (function_t *)lookup_term(stack->functions, name);
+    stack_t *root = stack;
+
+    while (root->parent != NULL) {
+        root = root->parent;
+    }
+
+    return (function_t *)lookup_term(root->functions, name);
+}
+
+result_t *lookup_variable(const char *name) {
+    stack_t *root = stack;
+    result_t *result = NULL;
+
+    do {
+        result = lookup_result(root->variables, name);
+
+        if (result != NULL) {
+            return result;
+        }
+
+        root = root->parent;
+    } while (root != NULL);
+
+    return NULL;
 }
 
 result_t *eval(term_t *root) {
     if (stack == NULL) {
         stack = make_stack_t();
     }
-
-    set_current_stack();
 
     if (match(root->kind, "Print")) {
         return print((term_t *)root->value);
@@ -414,7 +419,7 @@ result_t *eval(term_t *root) {
     } else if (match(root->kind, "Var")) {
         var_t *var = (var_t *)root;
 
-        result_t *result = lookup_result(current_stack->variables, var->text);
+        result_t *result = lookup_variable(var->text);
 
         if (result == NULL) {
             runtime_error("Unknown variable %s", var->text);

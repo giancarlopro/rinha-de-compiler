@@ -1,4 +1,5 @@
 #include <json-c/json.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -168,6 +169,7 @@ typedef struct term_map_t {
 
 typedef struct stack_t {
     struct stack_t *next;
+    struct stack_t *parent;
     result_map_t *variables;
     term_map_t *functions;
 } stack_t;
@@ -185,3 +187,6 @@ stack_t *stack_add(stack_t *stack, stack_t *value);
 result_map_t *result_map_add(result_map_t *map, result_map_t *value);
 result_map_t *result_map_replace(result_map_t *map, result_map_t *value);
 term_map_t *term_map_add(term_map_t *map, term_map_t *value);
+
+void printf_c(const char *fmt, ...);
+void set_interpreter_stdout(FILE *stdout);

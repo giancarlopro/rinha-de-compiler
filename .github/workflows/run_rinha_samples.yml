@@ -3,7 +3,10 @@ name: Docker Build and Run
 on:
   push:
     branches:
-      - main # or whichever branch you want this to run on
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build_and_run:

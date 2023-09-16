@@ -761,7 +761,40 @@ static char* test_eval_let_call_function_no_params() {
     term_t* term = parse_expression(expression);
     result_t* res = eval(term);
 
-    mu_assert("error, res->type != Int", match(res->type, "Void"));
+    mu_assert("error, res->type != Int", match(res->type, "Int"));
+    mu_assert("error, res->value != 10", (*(int*)res->value) == 10);
+
+    return 0;
+}
+
+static char* test_closure_works() {
+    function_t* function = make_function_t(NULL, (term_t*)make_var_t("x"));
+
+    let_t* let = make_let_t(
+        make_parameter_t("x"), (term_t*)make_int_t(1),
+        (term_t*)make_let_t(
+            make_parameter_t("func"), (term_t*)function,
+            (term_t*)make_call_t((term_t*)make_var_t("func"), NULL)));
+
+    result_t* res = eval((term_t*)let);
+
+    mu_assert("error, res->type != Int", match(res->type, "Int"));
+    mu_assert("error, res->value != 1", (*(int*)res->value) == 1);
+
+    return 0;
+}
+
+static char* test_print_returns_value() {
+    const char* data =
+        "{\"kind\": \"Print\", \"value\": {\"kind\": \"Int\", \"value\": 1}}";
+
+    json_object* root = json_tokener_parse(data);
+
+    term_t* term = parse_expression(root);
+    result_t* res = eval(term);
+
+    mu_assert("error, res->type != Int", match(res->type, "Int"));
+    mu_assert("error, res->value != 1", (*(int*)res->value) == 1);
 
     return 0;
 }
@@ -805,10 +838,14 @@ static char* all_tests() {
     mu_run_test(test_parse_function);
     mu_run_test(test_parse_call);
     mu_run_test(test_eval_let_call_function_no_params);
+    mu_run_test(test_closure_works);
+    mu_run_test(test_print_returns_value);
     return 0;
 }
 
 int main(int argc, char** argv) {
+    set_interpreter_stdout(fopen("/dev/null", "w"));
+
     char* result = all_tests();
     if (result != 0) {
         printf("%s\n", result);
