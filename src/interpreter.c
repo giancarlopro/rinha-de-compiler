@@ -103,24 +103,24 @@ result_t *print(term_t *root) {
     result_t *res = eval(root);
 
     if (match(res->type, "Str")) {
-        printf("%s", (char *)res->value);
+        printf_c("%s", (char *)res->value);
     } else if (match(res->type, "Int")) {
-        printf("%d", *(int *)res->value);
+        printf_c("%d", *(int *)res->value);
     } else if (match(res->type, "Bool")) {
         bool value = *(bool *)res->value;
         if (value) {
-            printf("true");
+            printf_c("true");
         } else {
-            printf("false");
+            printf_c("false");
         }
     } else if (match(res->type, "Tuple")) {
         tuple_t *tuple = (tuple_t *)root;
 
-        printf("(");
+        printf_c("(");
         print(tuple->first);
-        printf(", ");
+        printf_c(", ");
         print(tuple->second);
-        printf(")");
+        printf_c(")");
     } else {
         runtime_error("Print for kind %s not implemented", res->type);
     }
@@ -130,7 +130,7 @@ result_t *print(term_t *root) {
 
 char *as_str(result_t *result) {
     if (match(result->type, "Int")) {
-        char *data = malloc(20);
+        char *data = malloc(100);
         sprintf(data, "%d", *(int *)result->value);
         return data;
     } else if (match(result->type, "Str")) {
@@ -262,6 +262,7 @@ result_t *eval_binary(binary_t *binary) {
     }
 }
 
+/** debug only function */
 void print_stack_variables() {
     int stack_size = stack_len(stack);
 

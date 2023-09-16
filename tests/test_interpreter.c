@@ -844,6 +844,8 @@ static char* all_tests() {
 }
 
 int main(int argc, char** argv) {
+    set_interpreter_stdout(fopen("/dev/null", "w"));
+
     char* result = all_tests();
     if (result != 0) {
         printf("%s\n", result);
