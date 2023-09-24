@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
 
     term_t *term = parse_expression(expression);
 
-    eval(term);
+    eval(term, NULL);
 
     free_term_t(term);
     json_object_put(root);

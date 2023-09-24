@@ -1,0 +1,12 @@
+let assert = fn (value, expected) => {
+    if (value == expected) {
+        print(value + " == " + expected + " [OK]")
+    } else {
+        print(value + " != " + expected + " [Fail]")
+    }
+};
+let _ = assert(10 + 20, 30);
+let _ = assert(2 * 4 + 1, 9);
+let _ = assert(1 + 2 * 4, 9);
+let _ = assert(3 * 2 + 2 * 4, 14);
+print("[OK]")

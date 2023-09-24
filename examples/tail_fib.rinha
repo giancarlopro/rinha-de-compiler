@@ -1,0 +1,11 @@
+let fib = fn (n) => {
+  let fib_helper = fn (n, a, b) => {
+    if (n == 0) {
+      a
+    } else {
+      fib_helper(n - 1, b, a + b)
+    }
+  };
+  fib_helper(n, 0, 1)
+};
+print(fib(100000))

@@ -3,7 +3,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#define TCO_ENABLED true
+
 stack_t *stack = NULL;
+context_t *default_context = NULL;
 
 term_t *parse_expression(json_object *expression) {
     if (expression == NULL) {
@@ -100,7 +103,7 @@ term_t *parse_expression(json_object *expression) {
 }
 
 result_t *print(term_t *root) {
-    result_t *res = eval(root);
+    result_t *res = eval(root, default_context);
 
     if (match(res->type, "Str")) {
         printf_c("%s", (char *)res->value);
@@ -143,8 +146,8 @@ char *as_str(result_t *result) {
 }
 
 result_t *eval_binary(binary_t *binary) {
-    result_t *left = eval(binary->lhs);
-    result_t *right = eval(binary->rhs);
+    result_t *left = eval(binary->lhs, default_context);
+    result_t *right = eval(binary->rhs, default_context);
 
     if (match(binary->op, "Sub") || match(binary->op, "Mul") ||
         match(binary->op, "Div") || match(binary->op, "Rem") ||
@@ -323,25 +326,61 @@ result_t *lookup_variable(const char *name) {
     return NULL;
 }
 
-result_t *eval(term_t *root) {
+bool is_term_tail(term_t *term, const char *function_name) {
+    if (match(term->kind, "Let")) {
+        let_t *let = (let_t *)term;
+
+        return is_term_tail(let->next, function_name);
+    } else if (match(term->kind, "Call")) {
+        call_t *call = (call_t *)term;
+
+        return match(call->callee->kind, "Var") &&
+               match(call->callee->value, function_name);
+    } else if (match(term->kind, "If")) {
+        if_t *_if = (if_t *)term;
+
+        return is_term_tail(_if->then, function_name) ||
+               is_term_tail(_if->otherwise, function_name);
+    }
+
+    return false;
+}
+
+bool is_tail_recursive(function_t *function, const char *name) {
+    if (function == NULL) return false;
+
+    term_t *value = function->value;
+
+    return is_term_tail(value, name);
+}
+
+result_t *eval(term_t *root, context_t *context) {
     if (stack == NULL) {
         stack = make_stack_t();
     }
+
+    result_t *eval_result = NULL;
+
+TAIL_START:
+    // if (context != NULL) {
+    //     printf("[%d] context is tail is %d\n", stack_len(stack),
+    //            context->is_tail);
+    // }
 
     if (match(root->kind, "Print")) {
         result_t *result = print((term_t *)root->value);
         printf_c("\n");
 
-        return result;
+        eval_result = result;
     } else if (match(root->kind, "Str") || match(root->kind, "Int") ||
                match(root->kind, "Bool")) {
-        return make_result_t(root->value, root->kind);
+        eval_result = make_result_t(root->value, root->kind);
     } else if (match(root->kind, "Tuple")) {
         tuple_t *tuple = (tuple_t *)root;
 
-        return make_result_t(
-            (void *)make_runtime_tuple_t(eval(tuple->first)->value,
-                                         eval(tuple->second)->value),
+        eval_result = make_result_t(
+            (void *)make_runtime_tuple_t(eval(tuple->first, context)->value,
+                                         eval(tuple->second, context)->value),
             "Tuple");
     } else if (match(root->kind, "First")) {
         tuple_t *tuple = (tuple_t *)root->value;
@@ -351,8 +390,8 @@ result_t *eval(term_t *root) {
         }
 
         runtime_tuple_t *runtime_tuple =
-            (runtime_tuple_t *)eval(root->value)->value;
-        return make_result_t(runtime_tuple->first, tuple->first->kind);
+            (runtime_tuple_t *)eval(root->value, context)->value;
+        eval_result = make_result_t(runtime_tuple->first, tuple->first->kind);
     } else if (match(root->kind, "Second")) {
         tuple_t *tuple = (tuple_t *)root->value;
 
@@ -361,31 +400,31 @@ result_t *eval(term_t *root) {
         }
 
         runtime_tuple_t *runtime_tuple =
-            (runtime_tuple_t *)eval(root->value)->value;
-        return make_result_t(runtime_tuple->second, tuple->second->kind);
+            (runtime_tuple_t *)eval(root->value, context)->value;
+        eval_result = make_result_t(runtime_tuple->second, tuple->second->kind);
     } else if (match(root->kind, "Binary")) {
-        return eval_binary((binary_t *)root);
+        eval_result = eval_binary((binary_t *)root);
     } else if (match(root->kind, "If")) {
         if_t *if_term = (if_t *)root;
 
-        result_t *condition = eval(if_term->condition);
+        result_t *condition = eval(if_term->condition, context);
 
         if (*(bool *)condition->value) {
-            return eval(if_term->then);
+            eval_result = eval(if_term->then, context);
         } else {
-            return eval(if_term->otherwise);
+            eval_result = eval(if_term->otherwise, context);
         }
     } else if (match(root->kind, "Let")) {
         let_t *let = (let_t *)root;
 
-        result_t *result = eval(let->value);
+        result_t *result = eval(let->value, context);
         push_variable(let->name->text, result);
 
-        if (let->next != NULL) {
-            return eval(let->next);
+        if (let->next == NULL) {
+            runtime_error("Let expression must have a next term");
         }
 
-        return make_result_t(NULL, "Void");
+        eval_result = eval(let->next, context);
     } else if (match(root->kind, "Var")) {
         var_t *var = (var_t *)root;
 
@@ -395,18 +434,18 @@ result_t *eval(term_t *root) {
             runtime_error("Unknown variable %s", var->text);
         }
 
-        return result;
+        eval_result = result;
     } else if (match(root->kind, "Function")) {
         function_t *f = (function_t *)root;
 
         f->closure_stack = stack_copy(stack);
 
-        return make_result_t((void *)root, "Function");
+        eval_result = make_result_t((void *)root, "Function");
     } else if (match(root->kind, "Call")) {
         call_t *call = (call_t *)root;
         function_t *function = NULL;
 
-        result_t *var = eval(call->callee);
+        result_t *var = eval(call->callee, context);
 
         if (var != NULL && !match(var->type, "Function")) {
             runtime_error("Cannot call %s", var->type);
@@ -415,7 +454,7 @@ result_t *eval(term_t *root) {
         function = (function_t *)var->value;
 
         if (call->arguments != NULL && function->parameters != NULL &&
-            len(call->arguments) != len(function->parameters)) {
+            call->arguments->length != function->parameters->length) {
             runtime_error("Wrong number of arguments");
         }
 
@@ -433,24 +472,27 @@ result_t *eval(term_t *root) {
             for (int i = 0; i < length; i++) {
                 const char *parameter = parameters[i]->text;
 
-                result_t *result = eval(arguments[i]);
+                result_t *result = eval(arguments[i], context);
 
                 variables[i] = make_variable_t(parameter, result);
             }
         }
 
-        add_stack();
+        if (context == NULL) {
+            printf("stack added\n");
+            add_stack();
+        }
 
         if (function->closure_stack != NULL) {
             stack_t *root = function->closure_stack;
 
             do {
-                result_map_t *variables = root->variables;
+                result_map_t *vars = root->variables;
 
-                while (variables != NULL) {
-                    push_variable(variables->key, variables->value);
+                while (vars != NULL) {
+                    replace_variable(vars->key, vars->value);
 
-                    variables = variables->next;
+                    vars = vars->next;
                 }
 
                 root = root->parent;
@@ -463,12 +505,40 @@ result_t *eval(term_t *root) {
             }
         }
 
-        result_t *result = eval(function->value);
+        // if (context != NULL && context->is_tail) {
+        //     printf("Gone to top\n");
+        //     print_stack_variables();
+        //     goto TAIL_START;
+        // }
+
+        if (TCO_ENABLED && is_tail_recursive(function, call->callee->value)) {
+            // printf("Tail recursive call [%s()]\nStack size: %d\n",
+            //        call->callee->value, stack_len(stack));
+
+            root = function->value;
+
+            printf("function kind -> %s\n", root->kind);
+
+            if (context == NULL) {
+                context = malloc(sizeof(context_t));
+            }
+
+            context->is_tail = true;
+
+            goto TAIL_START;
+        }
+
+        eval_result = eval(function->value, context);
 
         pop_stack();
-
-        return result;
     } else {
         runtime_error("Unknown term kind %s", root->kind);
     }
+
+    if (context != NULL && context->is_tail && match(root->kind, "Call")) {
+        printf("stack popped\n");
+        pop_stack();
+    }
+
+    return eval_result;
 }

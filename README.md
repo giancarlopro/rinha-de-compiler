@@ -39,3 +39,8 @@ docker run \
 - [x] Second
 - [x] Bool
 - [x] Tuple
+
+
+## Tail Recursion Optmization
+
+This branch contains a working TCO implementation, but since the interpreter doesn't care to free memory, it doesn't make any difference. So i will leave it here just because ive lost a lot of time implementing it.

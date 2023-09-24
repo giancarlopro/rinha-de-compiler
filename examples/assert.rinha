@@ -1,0 +1,19 @@
+let assert = fn (value, expected) => {
+    if (value == expected) {
+        print(value + " == " + expected + " [OK]")
+    } else {
+        print(value + " != " + expected + " [Fail]")
+    }
+};
+let i = 1;
+let innerClosure = fn (param) => {
+    let x = "Called with " + param;
+    fn () => {
+        i + " " + x
+    }
+};
+let f1 = innerClosure(10);
+let _ = assert(f1(), "1 Called with 10");
+let f1 = innerClosure(20);
+let _ = assert(f1(), "1 Called with 20");
+print(assert)

@@ -1,0 +1,8 @@
+let f = fn () => {
+  let x = 1;
+  fn () => {
+    x
+  }
+};
+let g = f();
+print(g())

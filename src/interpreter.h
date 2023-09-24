@@ -105,6 +105,11 @@ typedef struct {
     result_t *value;
 } variable_t;
 
+typedef struct {
+    bool is_tail;
+    const char *tail_function_name;
+} context_t;
+
 result_t *make_result_t(void *value, const char *type);
 print_t *make_print_t(term_t *value);
 str_t *make_str_t(const char *value);
@@ -145,7 +150,7 @@ void free_array_t(array_t *array);
 void runtime_error(const char *message, ...);
 
 term_t *parse_expression(json_object *expression);
-result_t *eval(term_t *root);
+result_t *eval(term_t *root, context_t *context);
 
 typedef struct result_map_t {
     struct result_map_t *next;
