@@ -47,7 +47,6 @@ stack_t *make_stack_t() {
 
     stack->parent = NULL;
     stack->variables = NULL;
-    stack->functions = NULL;
 
     return stack;
 }
@@ -60,7 +59,6 @@ void free_stack_t(stack_t *stack) {
     }
 
     free_result_map_t(stack->variables);
-    free_term_map_t(stack->functions);
     free(stack);
 }
 
@@ -164,7 +162,6 @@ stack_t *stack_copy(stack_t *stack) {
 
     copy->parent = stack->parent;
     copy->variables = stack->variables;
-    copy->functions = stack->functions;
 
     return copy;
 }

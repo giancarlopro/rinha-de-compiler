@@ -163,7 +163,6 @@ typedef struct stack_t {
     struct stack_t *next;
     struct stack_t *parent;
     result_map_t *variables;
-    term_map_t *functions;
 } stack_t;
 
 result_map_t *make_result_map_t(const char *key, result_t *value);

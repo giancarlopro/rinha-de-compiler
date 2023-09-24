@@ -278,16 +278,6 @@ void print_stack_variables() {
             variables = variables->next;
         }
     }
-
-    if (stack->functions != NULL) {
-        term_map_t *functions = stack->functions;
-
-        while (functions != NULL) {
-            printf("[%d] Function -> %s\n", stack_size, functions->key);
-
-            functions = functions->next;
-        }
-    }
 }
 
 void add_stack() {
@@ -306,34 +296,9 @@ void push_variable(const char *key, result_t *value) {
         result_map_add(stack->variables, make_result_map_t(key, value));
 }
 
-void push_function(const char *key, term_t *value) {
-    if (stack == NULL) {
-        stack = make_stack_t();
-    }
-
-    stack_t *root = stack;
-
-    while (root->parent != NULL) {
-        root = root->parent;
-    }
-
-    root->functions =
-        term_map_add(root->functions, make_term_map_t(key, value));
-}
-
 void clean() {
     // free_stack_t(stack);
     stack = NULL;
-}
-
-function_t *lookup_function(const char *name) {
-    stack_t *root = stack;
-
-    while (root->parent != NULL) {
-        root = root->parent;
-    }
-
-    return (function_t *)lookup_term(root->functions, name);
 }
 
 result_t *lookup_variable(const char *name) {
@@ -408,13 +373,8 @@ result_t *eval(term_t *root) {
     } else if (match(root->kind, "Let")) {
         let_t *let = (let_t *)root;
 
-        if (match(let->value->kind, "Function")) {
-            push_function(let->name->text, let->value);
-        } else {
-            result_t *result = eval(let->value);
-
-            push_variable(let->name->text, result);
-        }
+        result_t *result = eval(let->value);
+        push_variable(let->name->text, result);
 
         if (let->next != NULL) {
             return eval(let->next);
@@ -441,21 +401,13 @@ result_t *eval(term_t *root) {
         call_t *call = (call_t *)root;
         function_t *function = NULL;
 
-        if (match(call->callee->kind, "Var")) {
-            function = lookup_function(((var_t *)call->callee)->text);
+        result_t *var = eval(call->callee);
 
-            if (function == NULL) {
-                result_t *var = lookup_variable(((var_t *)call->callee)->text);
-
-                if (var != NULL && match(var->type, "Function")) {
-                    function = (function_t *)var->value;
-                }
-            }
+        if (var != NULL && !match(var->type, "Function")) {
+            runtime_error("Cannot call %s", var->type);
         }
 
-        if (function == NULL) {
-            runtime_error("Unknown function %s", ((var_t *)call->callee)->text);
-        }
+        function = (function_t *)var->value;
 
         if (call->arguments != NULL && function->parameters != NULL &&
             len(call->arguments) != len(function->parameters)) {
