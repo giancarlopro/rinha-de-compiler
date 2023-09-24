@@ -450,13 +450,12 @@ static char* test_parse_print_expression() {
 
     term_t* term = parse_expression(root);
 
-    mu_assert("error, term->kind != \"Print\"",
-              strcmp(term->kind, "Print") == 0);
+    mu_assert("error, term->kind != \"Print\"", match(term->kind, "Print"));
 
     str_t* str = term->value;
 
-    mu_assert("error, str->kind != \"Str\"", strcmp(str->kind, "Str") == 0);
-    mu_assert("error, str->value != \"data\"", strcmp(str->value, "data") == 0);
+    mu_assert("error, str->kind != \"Str\"", match(str->kind, "Str"));
+    mu_assert("error, str->value != \"data\"", match(str->value, "data"));
 }
 
 static char* test_parse_int() {

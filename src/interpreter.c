@@ -296,6 +296,11 @@ void push_variable(const char *key, result_t *value) {
         result_map_add(stack->variables, make_result_map_t(key, value));
 }
 
+void replace_variable(const char *key, result_t *value) {
+    stack->variables =
+        result_map_replace(stack->variables, make_result_map_t(key, value));
+}
+
 void clean() {
     // free_stack_t(stack);
     stack = NULL;
@@ -454,7 +459,7 @@ result_t *eval(term_t *root) {
 
         if (call->arguments != NULL) {
             for (int i = 0; i < call->arguments->length; i++) {
-                push_variable(variables[i]->key, variables[i]->value);
+                replace_variable(variables[i]->key, variables[i]->value);
             }
         }
 

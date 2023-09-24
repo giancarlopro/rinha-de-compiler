@@ -118,7 +118,6 @@ result_map_t *result_map_replace(result_map_t *map, result_map_t *value) {
 
     while (current != NULL) {
         if (match(current->key, value->key)) {
-            free_result_t(current->value);
             current->value = value->value;
 
             return map;
