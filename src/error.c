@@ -7,5 +7,6 @@ void runtime_error(const char *message, ...) {
     va_start(args, message);
     fprintf(stderr, "Runtime error: ");
     vfprintf(stderr, message, args);
+    fprintf(stderr, "\n");
     exit(1);
 }
