@@ -5,7 +5,13 @@
 int main(int argc, char **argv) {
     char *filename = argv[1];
 
-    json_object *root = json_object_from_file(filename);
+    json_object *root = NULL;
+
+    if (match(filename, "-")) {
+        root = json_object_from_fd(0);
+    } else {
+        root = json_object_from_file(filename);
+    }
 
     if (!root) return 1;
 
