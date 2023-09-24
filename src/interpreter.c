@@ -121,6 +121,8 @@ result_t *print(term_t *root) {
         printf_c(", ");
         print(tuple->second);
         printf_c(")");
+    } else if (match(res->type, "Function")) {
+        printf_c("<#closure>");
     } else {
         runtime_error("Print for kind %s not implemented", res->type);
     }
@@ -276,16 +278,6 @@ void print_stack_variables() {
             variables = variables->next;
         }
     }
-
-    if (stack->functions != NULL) {
-        term_map_t *functions = stack->functions;
-
-        while (functions != NULL) {
-            printf("[%d] Function -> %s\n", stack_size, functions->key);
-
-            functions = functions->next;
-        }
-    }
 }
 
 void add_stack() {
@@ -304,34 +296,14 @@ void push_variable(const char *key, result_t *value) {
         result_map_add(stack->variables, make_result_map_t(key, value));
 }
 
-void push_function(const char *key, term_t *value) {
-    if (stack == NULL) {
-        stack = make_stack_t();
-    }
-
-    stack_t *root = stack;
-
-    while (root->parent != NULL) {
-        root = root->parent;
-    }
-
-    root->functions =
-        term_map_add(root->functions, make_term_map_t(key, value));
+void replace_variable(const char *key, result_t *value) {
+    stack->variables =
+        result_map_replace(stack->variables, make_result_map_t(key, value));
 }
 
 void clean() {
-    free_stack_t(stack);
+    // free_stack_t(stack);
     stack = NULL;
-}
-
-function_t *lookup_function(const char *name) {
-    stack_t *root = stack;
-
-    while (root->parent != NULL) {
-        root = root->parent;
-    }
-
-    return (function_t *)lookup_term(root->functions, name);
 }
 
 result_t *lookup_variable(const char *name) {
@@ -357,7 +329,10 @@ result_t *eval(term_t *root) {
     }
 
     if (match(root->kind, "Print")) {
-        return print((term_t *)root->value);
+        result_t *result = print((term_t *)root->value);
+        printf_c("\n");
+
+        return result;
     } else if (match(root->kind, "Str") || match(root->kind, "Int") ||
                match(root->kind, "Bool")) {
         return make_result_t(root->value, root->kind);
@@ -403,13 +378,8 @@ result_t *eval(term_t *root) {
     } else if (match(root->kind, "Let")) {
         let_t *let = (let_t *)root;
 
-        if (match(let->value->kind, "Function")) {
-            push_function(let->name->text, let->value);
-        } else {
-            result_t *result = eval(let->value);
-
-            push_variable(let->name->text, result);
-        }
+        result_t *result = eval(let->value);
+        push_variable(let->name->text, result);
 
         if (let->next != NULL) {
             return eval(let->next);
@@ -427,18 +397,22 @@ result_t *eval(term_t *root) {
 
         return result;
     } else if (match(root->kind, "Function")) {
-        return make_result_t(NULL, "Void");
+        function_t *f = (function_t *)root;
+
+        f->closure_stack = stack_copy(stack);
+
+        return make_result_t((void *)root, "Function");
     } else if (match(root->kind, "Call")) {
         call_t *call = (call_t *)root;
         function_t *function = NULL;
 
-        if (match(call->callee->kind, "Var")) {
-            function = lookup_function(((var_t *)call->callee)->text);
+        result_t *var = eval(call->callee);
+
+        if (var != NULL && !match(var->type, "Function")) {
+            runtime_error("Cannot call %s", var->type);
         }
 
-        if (function == NULL) {
-            runtime_error("Unknown function %s", ((var_t *)call->callee)->text);
-        }
+        function = (function_t *)var->value;
 
         if (call->arguments != NULL && function->parameters != NULL &&
             len(call->arguments) != len(function->parameters)) {
@@ -467,9 +441,25 @@ result_t *eval(term_t *root) {
 
         add_stack();
 
+        if (function->closure_stack != NULL) {
+            stack_t *root = function->closure_stack;
+
+            do {
+                result_map_t *variables = root->variables;
+
+                while (variables != NULL) {
+                    push_variable(variables->key, variables->value);
+
+                    variables = variables->next;
+                }
+
+                root = root->parent;
+            } while (root != NULL);
+        }
+
         if (call->arguments != NULL) {
             for (int i = 0; i < call->arguments->length; i++) {
-                push_variable(variables[i]->key, variables[i]->value);
+                replace_variable(variables[i]->key, variables[i]->value);
             }
         }
 

@@ -47,7 +47,6 @@ stack_t *make_stack_t() {
 
     stack->parent = NULL;
     stack->variables = NULL;
-    stack->functions = NULL;
 
     return stack;
 }
@@ -60,7 +59,6 @@ void free_stack_t(stack_t *stack) {
     }
 
     free_result_map_t(stack->variables);
-    free_term_map_t(stack->functions);
     free(stack);
 }
 
@@ -120,7 +118,6 @@ result_map_t *result_map_replace(result_map_t *map, result_map_t *value) {
 
     while (current != NULL) {
         if (match(current->key, value->key)) {
-            free_result_t(current->value);
             current->value = value->value;
 
             return map;
@@ -153,9 +150,17 @@ term_map_t *term_map_add(term_map_t *map, term_map_t *value) {
 }
 
 int stack_len(stack_t *stack) {
-    if (stack == NULL) {
-        return 0;
-    } else {
-        return 1 + stack_len(stack->next);
-    }
+    if (stack == NULL) return 0;
+    if (stack->parent == NULL) return 1;
+
+    return 1 + stack_len(stack->parent);
+}
+
+stack_t *stack_copy(stack_t *stack) {
+    stack_t *copy = make_stack_t();
+
+    copy->parent = stack->parent;
+    copy->variables = stack->variables;
+
+    return copy;
 }

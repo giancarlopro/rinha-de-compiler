@@ -5,9 +5,9 @@
     } while (0)
 #define mu_run_test(test)            \
     do {                             \
+        clean();                     \
         char *message = test();      \
         tests_run++;                 \
         if (message) return message; \
-        clean();                     \
     } while (0)
 extern int tests_run;
