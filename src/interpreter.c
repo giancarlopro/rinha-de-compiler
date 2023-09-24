@@ -121,6 +121,8 @@ result_t *print(term_t *root) {
         printf_c(", ");
         print(tuple->second);
         printf_c(")");
+    } else if (match(res->type, "Function")) {
+        printf_c("<#closure>");
     } else {
         runtime_error("Print for kind %s not implemented", res->type);
     }
@@ -357,7 +359,10 @@ result_t *eval(term_t *root) {
     }
 
     if (match(root->kind, "Print")) {
-        return print((term_t *)root->value);
+        result_t *result = print((term_t *)root->value);
+        printf_c("\n");
+
+        return result;
     } else if (match(root->kind, "Str") || match(root->kind, "Int") ||
                match(root->kind, "Bool")) {
         return make_result_t(root->value, root->kind);
