@@ -96,12 +96,6 @@ typedef struct {
 
 typedef struct {
     const char *kind;
-    array_t *parameters;
-    term_t *value;
-} function_t;
-
-typedef struct {
-    const char *kind;
     term_t *callee;
     array_t *arguments;
 } call_t;
@@ -125,7 +119,6 @@ if_t *make_if_t(term_t *condition, term_t *then, term_t *otherwise);
 parameter_t *make_parameter_t(const char *text);
 let_t *make_let_t(parameter_t *name, term_t *value, term_t *next);
 var_t *make_var_t(const char *text);
-function_t *make_function_t(array_t *parameters, term_t *value);
 call_t *make_call_t(term_t *callee, array_t *arguments);
 variable_t *make_variable_t(const char *key, result_t *value);
 array_t *make_array_t(size_t length, void **values);
@@ -144,7 +137,6 @@ void free_if_t(if_t *value);
 void free_parameter_t(parameter_t *parameter);
 void free_let_t(let_t *let);
 void free_var_t(var_t *var);
-void free_function_t(function_t *function);
 void free_call_t(call_t *call);
 void clean();
 void free_variable_t(variable_t *variable);
@@ -181,6 +173,7 @@ void free_term_map_t(term_map_t *term_map);
 stack_t *make_stack_t();
 void free_stack_t(stack_t *stack);
 int stack_len(stack_t *stack);
+stack_t *stack_copy(stack_t *stack);
 term_t *lookup_term(term_map_t *map, const char *key);
 result_t *lookup_result(result_map_t *map, const char *key);
 stack_t *stack_add(stack_t *stack, stack_t *value);
@@ -190,3 +183,13 @@ term_map_t *term_map_add(term_map_t *map, term_map_t *value);
 
 void printf_c(const char *fmt, ...);
 void set_interpreter_stdout(FILE *stdout);
+
+typedef struct {
+    const char *kind;
+    array_t *parameters;
+    term_t *value;
+    stack_t *closure_stack;
+} function_t;
+
+function_t *make_function_t(array_t *parameters, term_t *value);
+void free_function_t(function_t *function);

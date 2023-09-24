@@ -320,7 +320,7 @@ void push_function(const char *key, term_t *value) {
 }
 
 void clean() {
-    free_stack_t(stack);
+    // free_stack_t(stack);
     stack = NULL;
 }
 
@@ -427,13 +427,25 @@ result_t *eval(term_t *root) {
 
         return result;
     } else if (match(root->kind, "Function")) {
-        return make_result_t(NULL, "Void");
+        function_t *f = (function_t *)root;
+
+        f->closure_stack = stack_copy(stack);
+
+        return make_result_t((void *)root, "Function");
     } else if (match(root->kind, "Call")) {
         call_t *call = (call_t *)root;
         function_t *function = NULL;
 
         if (match(call->callee->kind, "Var")) {
             function = lookup_function(((var_t *)call->callee)->text);
+
+            if (function == NULL) {
+                result_t *var = lookup_variable(((var_t *)call->callee)->text);
+
+                if (var != NULL && match(var->type, "Function")) {
+                    function = (function_t *)var->value;
+                }
+            }
         }
 
         if (function == NULL) {
@@ -466,6 +478,22 @@ result_t *eval(term_t *root) {
         }
 
         add_stack();
+
+        if (function->closure_stack != NULL) {
+            stack_t *root = function->closure_stack;
+
+            do {
+                result_map_t *variables = root->variables;
+
+                while (variables != NULL) {
+                    push_variable(variables->key, variables->value);
+
+                    variables = variables->next;
+                }
+
+                root = root->parent;
+            } while (root != NULL);
+        }
 
         if (call->arguments != NULL) {
             for (int i = 0; i < call->arguments->length; i++) {
